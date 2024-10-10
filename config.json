@@ -1,0 +1,9 @@
+{
+    "use_proxy": false,
+    "quack_amount": 3,
+    "quack_delay": 0.3,
+    "complete_task": false,
+    "account_delay": 5,
+    "countdown_loop": 3800
+  }
+  
