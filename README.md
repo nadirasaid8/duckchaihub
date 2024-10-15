@@ -2,7 +2,7 @@
 
 A Python-based automation bot for interacting with the D*ckCh*in API. This bot can perform daily sign-ins, open boxes, execute quacks, and complete tasks automatically using multiple accounts with proxy support.
 
-[TELEGRAM CHANNEL](https://t.me/Deeplchain) | [TWITTER](https://x.com/itsjaw_real)
+[TELEGRAM CHANNEL](https://t.me/Deeplchain) | [CONTACT](https://t.me/imspecials)
 
 ## REGISTRATIONS (BIG AIRDROP POTENTIAL)
 ***What is d*ckchain?*** D*ckch*in is the TON L2 powered by Arbitrum. Bringing Liquidity and users from EVM and Bitcoin ecosystem into TON : [announcements](https://x.com/arbitrum/status/1820820056965812287)
@@ -141,4 +141,4 @@ Process each account by fetching user info, performing daily sign-in, opening al
 This project is licensed under the `MIT License`.
 
 ## Contact
-For questions or support, please contact [ https://t.me/DeeplChainSup ]
+For questions or support, please contact [ https://t.me/DeeplChain ]
