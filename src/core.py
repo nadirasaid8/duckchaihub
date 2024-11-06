@@ -15,6 +15,7 @@ config = read_config()
 class DuckChainAPI:
     def __init__(self, authorization, proxy=None, timeout=10):
         self.base_url = "https://preapi.duckchain.io"
+        self.authorization = f'tma {authorization}'
         self.headers = headers(authorization)
         self.proxy = proxy
         self.timeout = timeout
@@ -37,21 +38,21 @@ class DuckChainAPI:
                 with urllib.request.urlopen(req, timeout=self.timeout) as response:
                     return json.load(response)
             except urllib.error.HTTPError as e:
-                log(f"HTTPError: {e.code} - {e.reason}")
+                log(mrh + f"HTTPError: {e.code} - {e.reason}")
                 return None
             except urllib.error.URLError as e:
-                log(f"URLError: {e.reason}")
+                log(mrh + f"URLError: {e.reason}")
                 log(htm + "~" * 38)
                 return None
             except http.client.RemoteDisconnected:
-                log(f"RemoteDisconnected: Attempt {attempt + 1} failed. Retrying...")
+                log(mrh + f"RemoteDisconnected: Attempt {attempt + 1} failed. Retrying...")
                 time.sleep(2)
                 continue
             except TimeoutError:
-                log(f"TimeoutError: Attempt {attempt + 1} failed. Retrying...")
+                log(mrh + f"TimeoutError: Attempt {attempt + 1} failed. Retrying...")
                 time.sleep(2)
                 continue
-        log("All retry attempts failed.")
+        log(bru + "All retry attempts failed.")
         return None
 
     def get_user_info(self):
@@ -71,6 +72,24 @@ class DuckChainAPI:
             log(hju + f"Daily Check-in : {kng}was complete")
         else:
             log(mrh + f"Daily Check-in failed.")
+
+    def claim_egg(self, task_id=1):
+        url = f"/property/daily/finish?taskId={task_id}"
+        response = self._make_request(url)
+        
+        if response is None:
+            log(mrh + f"Failed to get response for claim_egg. Skipping...")
+            return
+
+        if response.get("code") == 200:
+            if response.get("data") == 1:
+                log(hju + f"Successfully claimed eggs today")
+            else:
+                log(f"Claim egg is not finished or invalid data received.")
+        elif response.get('code') == 500:
+            log(kng + f"You have claimed eggs today.")
+        else:
+            log(mrh + f"Failed to claim egg for task {task_id}. Response: {response}")
 
     def open_all_boxes(self, open_type=1):
         while True:
@@ -100,13 +119,27 @@ class DuckChainAPI:
         tasks_response = self._make_request("/task/task_list")
         
         if not isinstance(tasks_response, dict):
-            log(f"Unexpected tasks format: {tasks_response}")
+            log(mrh + f"Unexpected tasks format: {tasks_response}")
             return
 
         tasks = tasks_response.get('data')
         if not tasks:
-            log("No tasks found in the 'data' field.")
+            log(kng + "No tasks found in the 'data' field.")
             return
+
+        task_info_response = self._make_request("/task/task_info")
+        if not isinstance(task_info_response, dict):
+            log(mrh + f"Unexpected task info format: {task_info_response}")
+            return
+
+        task_info = task_info_response.get('data', {})
+
+        completed_task_ids = set(
+            task_info.get('socialMedia', []) +
+            task_info.get('daily', []) +
+            task_info.get('partner', []) +
+            task_info.get('oneTime', [])
+        )
 
         for category, task_list in tasks.items():
             if isinstance(task_list, list):
@@ -114,16 +147,53 @@ class DuckChainAPI:
                     task_id = task.get('taskId')
                     content = task.get('content')
                     integral = task.get('integral')
-                    log(hju + f"Completing {pth}{content}")
-                    completion_response = self._make_request("/task/partner", {'taskId': task_id})
-                    if completion_response and completion_response.get("code") == 200:
-                        log(kng + f"successfully! {bru}Reward {pth}{integral} {bru}Points")
+
+                    if task_id == 137:
+                        log(kng + f"Task {pth}{content} {pth}is skipped.")
+                        continue
+
+                    if task_id in completed_task_ids:
+                        log(kng + f"Task {pth}{content} {kng}already completed.")
+                        continue
+
+                    type_task = self.get_task_type(category)
+                    if not type_task:
+                        continue
+
+                    completion_response = self._make_request(f"/task/{type_task}?taskId={task_id}")
+
+                    if completion_response is None:
+                        log(mrh + f"Failed to get response for task {content} {task_id}")
+                        continue 
+
+                    if completion_response.get("code") == 500 and 'task not open' in completion_response.get("message", "").lower():
+                        log(mrh + f"Task {content} is no longer open. Skipping...")
+                        continue 
+
+                    if completion_response.get("code") == 200:
+                        log(hju + f"Successfully {pth}{content}! {hju}Reward: {pth}{integral} {hju}Points")
+                        completed_task_ids.add(task_id)
+                        countdown_timer(3)
                     elif completion_response.get("code") == 500:
-                        log(kng + f"Task {pth}{content} {kng}was finished! ")
+                        log(kng + f"Task {content} was finished!")
                     else:
-                        log(mrh + f"Failed! {pth}{content} {htm}{completion_response}.")
+                        log(mrh + f"Failed to complete task {content}. Response: {completion_response}.")
             else:
-                log(htm + f"Unexpected task_list format for category {kng}{category}: {pth}{task_list}")
+                log(mrh + f"Unexpected task_list format for category {category}: {task_list}")
+
+    def get_task_type(self, category):
+        """Return the task type based on the category."""
+        if category == 'socialMedia':
+            return 'socialMedia'
+        elif category == 'daily':
+            return 'daily'
+        elif category == 'partner':
+            return 'partner'
+        elif category == 'oneTime':
+            return 'oneTime'
+        else:
+            log(f"Unexpected category {category}. Skipping...")
+            return None
 
 def get_proxy():
     try:
@@ -151,7 +221,7 @@ def log_user_info(user_info):
     if user_info['code'] == 200 and user_info['message'] == "SUCCESS":
         data = user_info['data']
         log(hju + f"Duck name: {pth}{data['duckName']}")
-        log(hju + f"Decibels: {pth}{data['decibels']}{hju}| Box Amount: {pth}{data['boxAmount']} ")
+        log(hju + f"Balance: {pth}{data['decibels']}{hju}| Box : {pth}{data['boxAmount']} {hju}| Eggs : {pth}{data['eggs']}")
     else:
         log(mrh + f"Failed to retrieve user info. Code: {user_info['code']}, Message: {user_info['message']}")
 
@@ -183,6 +253,7 @@ def main():
     complete_task = config.get("complete_task", False)
     account_delay = config.get("account_delay", 5)
     countdown_loop = config.get("countdown_loop", 3800)
+
     try:
         with open('data.txt', 'r') as file:
             tokens = [line.strip() for line in file if line.strip()]
@@ -195,10 +266,17 @@ def main():
         return
 
     total_accounts = len(tokens)
-    for index, token in enumerate(tokens, start=1): 
+    for index, token in enumerate(tokens, start=1):
         proxy = get_proxy() if use_proxy else None
+        
+        if proxy:
+             proxy_host = proxy.split('@')[-1] 
+        else:
+            log("No proxy used.")
+
         duck = DuckChainAPI(authorization=token, proxy=proxy)
-        log(bru + f"Processing account {pth}{index} / {total_accounts}") 
+        log(hju + f"Processing account {pth}{index} / {total_accounts}")
+        log(hju + f"Using proxy: {pth}{proxy_host}")
         log(htm + "~" * 38)
 
         user_info = duck.get_user_info()
@@ -206,6 +284,7 @@ def main():
             log_user_info(user_info)
 
             duck.perform_sign()
+            duck.claim_egg()
             duck.open_all_boxes()
 
             for i in range(quack_amount):
@@ -217,9 +296,9 @@ def main():
                 time.sleep(quack_delay)
 
             if complete_task:
-               duck.handle_tasks()
+                duck.handle_tasks()
             else:
-                log(kng + f"Auto complete task is disable!")
+                log(kng + f"Auto complete task is disabled!")
 
             log_line()
             countdown_timer(account_delay)
