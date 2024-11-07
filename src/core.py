@@ -276,7 +276,7 @@ def main():
 
         duck = DuckChainAPI(authorization=token, proxy=proxy)
         log(hju + f"Processing account {pth}{index} / {total_accounts}")
-        log(hju + f"Using proxy: {pth}{proxy_host}")
+        log(hju + f"Using proxy: {pth}{proxy_host}") # <-- Comment out this line when no proxy is used!
         log(htm + "~" * 38)
 
         user_info = duck.get_user_info()
