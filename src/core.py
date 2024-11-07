@@ -270,9 +270,9 @@ def main():
         proxy = get_proxy() if use_proxy else None
         
         if proxy:
-             proxy_host = proxy.split('@')[-1] 
+            proxy_host = proxy.split('@')[-1] 
         else:
-            log("No proxy used.")
+            proxy_host = "No proxy used"
 
         duck = DuckChainAPI(authorization=token, proxy=proxy)
         log(hju + f"Processing account {pth}{index} / {total_accounts}")
